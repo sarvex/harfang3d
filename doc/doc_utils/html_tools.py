@@ -17,9 +17,13 @@ def convert_markdown(text):
 
 
 def get_thesaurus(letters):
-	html = '<p style="width: 100%; text-align: center;">'
-	letter_links = ' - '.join(['<a href="#thesaurus-%s">%s</a>' % (letter, letter.upper()) for letter in letters])
-	html += letter_links
+	letter_links = ' - '.join(
+		[
+			f'<a href="#thesaurus-{letter}">{letter.upper()}</a>'
+			for letter in letters
+		]
+	)
+	html = f'<p style="width: 100%; text-align: center;">{letter_links}'
 	html += '</p>\n'
 
 	return html
@@ -59,7 +63,7 @@ def gen_class_index(uid, link_formatter):
 		if row_count > 0:
 			body += '<tr>'
 			for l in letters[i:i+4]:
-				body += '<th id="thesaurus-%s">%s</th>' % (l, l.upper())
+				body += f'<th id="thesaurus-{l}">{l.upper()}</th>'
 			body += '</tr>\n'
 
 			for row in range(row_count):
@@ -92,7 +96,7 @@ def gen_tutorial_index(uid, link_formatter):
 		parse_out = parse_tutorial_directive(tutorial_directive[0])
 
 		if parse_out is None:
-			print("Failed to parse .tutorial directive in %s" % uid)
+			print(f"Failed to parse .tutorial directive in {uid}")
 			continue
 
 		group = parse_out['group']
@@ -104,14 +108,14 @@ def gen_tutorial_index(uid, link_formatter):
 	# output index
 	body = ''
 	for group, tutorials in tutorials_group.items():
-		body += '### ' + group + '\n'
+		body += f'### {group}' + '\n'
 		body += '<table class="table" markdown=1>\n'  # allow markdown parsing of the table links
 		body += '<col width="180">\n'
 
 		body += '<tr><th>Title</th><th>Goal</th><th>Level</th><th>Duration</th><th>Language</th></tr>\n'
 		for uid, parse_out in tutorials.items():
 			body += '<tr>'
-			body += '<td>[%s]</td><td>%s</td><td>%s</td><td>%s min</td><td>%s</td>' % (uid, parse_out['goal'], parse_out['level'], parse_out['duration'], parse_out['lang'])
+			body += f"<td>[{uid}]</td><td>{parse_out['goal']}</td><td>{parse_out['level']}</td><td>{parse_out['duration']} min</td><td>{parse_out['lang']}</td>"
 			body += '</tr>\n'
 
 		body += "</table>\n"
@@ -132,18 +136,18 @@ def gen_class_info(uid, link_formatter):
 
 	is_abstract = is_class_abstract(uid)
 
-	inherits = ['[%s]' % i for i in inheritance[uid]]
-	inherited_by = ['[%s]' % nu for nu, nh in inheritance.items() if uid in nh]
-	related_to = ['[%s]' % c for c in related_classes]
+	inherits = [f'[{i}]' for i in inheritance[uid]]
+	inherited_by = [f'[{nu}]' for nu, nh in inheritance.items() if uid in nh]
+	related_to = [f'[{c}]' for c in related_classes]
 
 	body = '<table class="table class-member-index" markdown=1>\n'
 
-	if len(inherits) > 0:
+	if inherits:
 		body += '<tr>'
 		body += '<td style="width: 10%">Inherits:</td>'
 		body += '<td>' + doc_tools.list_to_natural_string(sorted(inherits), "and") + '</td>'
 		body += '</tr>\n'
-	if len(inherited_by) > 0:
+	if inherited_by:
 		body += '<tr>'
 		body += '<td style="width: 10%">Inherited by:</td>'
 		body += '<td>' + doc_tools.list_to_natural_string(sorted(inherited_by), "and") + '</td>'
@@ -178,12 +182,14 @@ def output_functions_index(funcs, href_prefix=""):
 			proto_parms = doc_tools.format_function_proto_parms(fn_tag)
 
 			if fn_uid in doc_tools.doc:
-				protos.append('<strong><a href="%s#%s">%s</a></strong>%s' % (href_prefix, fn_uid, fn_tag.get('name'), proto_parms))
+				protos.append(
+					f"""<strong><a href="{href_prefix}#{fn_uid}">{fn_tag.get('name')}</a></strong>{proto_parms}"""
+				)
 			else:
-				protos.append('<strong>%s</strong>%s' % (fn_tag.get('name'), proto_parms))
+				protos.append(f"<strong>{fn_tag.get('name')}</strong>{proto_parms}")
 
-		body += '<td class="text-right col-md-3">%s</td>' % '<br>'.join(rvalues)
-		body += '<td>%s</td>' % '<br>'.join(protos)
+		body += f"""<td class="text-right col-md-3">{'<br>'.join(rvalues)}</td>"""
+		body += f"<td>{'<br>'.join(protos)}</td>"
 		body += '</tr>\n'
 
 	body += '</table>\n'
@@ -197,10 +203,7 @@ def gen_class_content_index(uid, link_formatter):
 
 	body = str()
 
-	# output all enumerations
-	enum_tags = list(class_tag.iter('enum'))
-
-	if len(enum_tags) > 0:
+	if enum_tags := list(class_tag.iter('enum')):
 		body += '## Enumerations ##\n'
 
 		body += '<table class="table class-member-index" markdown=1>\n'
@@ -208,8 +211,8 @@ def gen_class_content_index(uid, link_formatter):
 			body += '<tr>'
 			enum_uid = enum_tag.get('uid')
 			name = enum_tag.get('name')
-			entries = ["**%s**" % tag.get('name') for tag in enum_tag.iter('entry')]
-			body += '<td class="text-right col-md-3" style="vertical-align: text-top;" id="%s">%s</td>' % (enum_uid, name)
+			entries = [f"**{tag.get('name')}**" for tag in enum_tag.iter('entry')]
+			body += f'<td class="text-right col-md-3" style="vertical-align: text-top;" id="{enum_uid}">{name}</td>'
 
 			body += '<td>'
 			body += doc_tools.list_to_natural_string(entries, "or")
@@ -219,10 +222,7 @@ def gen_class_content_index(uid, link_formatter):
 
 		body += '</table>\n'
 
-	# output all variables
-	var_tags = list(class_tag.iter('variable'))
-
-	if len(var_tags) > 0:
+	if var_tags := list(class_tag.iter('variable')):
 		body += '## Variables ##\n'
 
 		body += '<table class="table class-member-index" markdown=1>\n'
@@ -230,9 +230,9 @@ def gen_class_content_index(uid, link_formatter):
 			body += '<tr>'
 			type = doc_tools.format_uid_link(var_tag.get('type'))
 			if var_tag.get("static") == "1":
-				type = "static " + type
-			body += '<td class="text-right col-md-3" style="vertical-align: text-top;">%s</td>' % type
-			body += '<td>%s</td>' % var_tag.get('name')
+				type = f"static {type}"
+			body += f'<td class="text-right col-md-3" style="vertical-align: text-top;">{type}</td>'
+			body += f"<td>{var_tag.get('name')}</td>"
 			body += '</tr>\n'
 
 		body += '</table>\n'
@@ -261,16 +261,16 @@ def gen_class_content_index(uid, link_formatter):
 
 
 def output_function_documentation(uid, tags, link_formatter):
-	body = '<div class="function_div" id="%s" markdown=1>' % uid  # function div
+	body = f'<div class="function_div" id="{uid}" markdown=1>'
 
 	# output all prototypes
 	protos = []
 	for fn_tag in tags:
 		rvalue = doc_tools.format_function_proto_rvalue(fn_tag)
 		proto_parms = doc_tools.format_function_proto_parms(fn_tag)
-		protos.append('%s <strong>%s</strong>%s' % (rvalue, fn_tag.get('name'), proto_parms))
+		protos.append(f"{rvalue} <strong>{fn_tag.get('name')}</strong>{proto_parms}")
 
-	body += '<div class="function_proto">%s</div>' % '<br>'.join(protos)
+	body += f"""<div class="function_proto">{'<br>'.join(protos)}</div>"""
 
 	# output function documentation
 	body += '<div class="function_doc">'
@@ -341,13 +341,15 @@ def output_enum_documentation(uid):
 		name, value = entry.get("name"), entry.get("value")
 
 		if name:
-			body += "- " + name
+			body += f"- {name}"
 			if value:
-				body += " = `%s`" % value
+				body += f" = `{value}`"
 			body += "\n"
 
 	related_classes, related_functions = gather_uids_related_to(uid)
-	related_to = ['[%s]' % fn for fn in related_functions] + ['[%s]' % fn for fn in related_classes]
+	related_to = [f'[{fn}]' for fn in related_functions] + [
+		f'[{fn}]' for fn in related_classes
+	]
 
 	if len(related_to) > 0:
 		body += "\n\nUsed by " + doc_tools.list_to_natural_string(sorted(related_to), "and") + "."
@@ -360,14 +362,14 @@ def output_constant_documentation(uid):
 
 	body = "### %s ###\n" % uid
 	for entry in list(constant_tag):
-		name = entry.get("name")
-
-		if name:
-			body += "- " + name
+		if name := entry.get("name"):
+			body += f"- {name}"
 			body += "\n"
 
 	related_classes, related_functions = gather_uids_related_to(uid)
-	related_to = ['[%s]' % fn for fn in related_functions] + ['[%s]' % fn for fn in related_classes]
+	related_to = [f'[{fn}]' for fn in related_functions] + [
+		f'[{fn}]' for fn in related_classes
+	]
 
 	if len(related_to) > 0:
 		body += "\n\nUsed by " + doc_tools.list_to_natural_string(sorted(related_to), "and") + "."
@@ -378,10 +380,10 @@ def output_constant_documentation(uid):
 def gen_enum_content(uid, link_formatter):
 	related_classes, related_functions = gather_uids_related_to(uid)
 
-	related_to = ['[%s]' % c for c in related_classes]
+	related_to = [f'[{c}]' for c in related_classes]
 
 	body = '<table class="table class-member-index" markdown=1>\n'
-	if len(related_to) > 0:
+	if related_to:
 		body += '<tr>'
 		body += '<td>Used by:</td>'
 		body += '<td>' + doc_tools.list_to_natural_string(sorted(related_to), "and") + '</td>'
@@ -408,10 +410,10 @@ def is_function_using_uid(fn_tag, uid):
 
 
 def is_class_using_uid(class_tag, uid):
-	for fn_tag in class_tag:
-		if fn_tag.tag == "function" and is_function_using_uid(fn_tag, uid):
-			return True
-	return False
+	return any(
+		fn_tag.tag == "function" and is_function_using_uid(fn_tag, uid)
+		for fn_tag in class_tag
+	)
 
 
 related_to_cache = {}
@@ -440,7 +442,7 @@ def gather_uids_related_to(uid):
 
 
 def uids_to_link(uids):
-	return ['[%s]' % uid for uid in uids]
+	return [f'[{uid}]' for uid in uids]
 
 
 def get_tag_uids(tag_name, globals_only = False):
@@ -457,7 +459,7 @@ def group_uids_per_category(tag_name, globals_only=False):
 	for uid_, tags in api_tools.api.items():
 		if tags[0].tag == tag_name:
 			if globals_only is False or tags[0].get("global") == "1":
-				cat = tags[0].get("name")[0:1].upper()
+				cat = tags[0].get("name")[:1].upper()
 				if not cat.isalpha():
 					cat = "_"
 
@@ -474,11 +476,7 @@ def uid_name(uid):
 def gen_index(category, globals_only, link_formatter, col_count, sub_col_count):
 	cat_uids = group_uids_per_category(category, globals_only)
 
-	# output thesaurus
-	letters = ''
-	for cat, uids in sorted(cat_uids.items()):
-		letters += cat.lower()
-
+	letters = ''.join(cat.lower() for cat, uids in sorted(cat_uids.items()))
 	# output categories content
 	body = get_thesaurus(letters)
 	body += '<table class="table index" markdown=1>\n'
@@ -489,7 +487,7 @@ def gen_index(category, globals_only, link_formatter, col_count, sub_col_count):
 	while not done:
 		body += '<tr>'
 
-		for col in range(col_count):
+		for _ in range(col_count):
 			try:
 				cat, uids = next(i)
 
@@ -510,12 +508,12 @@ def gen_index(category, globals_only, link_formatter, col_count, sub_col_count):
 					if sub_col_size == 0:
 						body += '<div style="float: left; width: %.2f%%;">' % (100 / sub_col_count)
 
-					body += '[%s]' % uid
+					body += f'[{uid}]'
 
 					parent_tag = api_tools.api_parent_map[api_tools.api[uid][0]]
 					parent_name = parent_tag.get("name")
 					if parent_name is not None:
-						body += ' (%s)' % parent_name
+						body += f' ({parent_name})'
 
 					body += '<br>'
 
@@ -555,11 +553,7 @@ def gen_function_documentation(uid, link_formatter):
 
 	body = str()
 	for cat, uids in sorted(cat_uids.items()):
-		uids_tags = {}
-		for uid in uids:  # document all global functions
-			uids_tags[uid] = api_tools.api[uid]
-
-		if len(uids_tags) > 0:
+		if uids_tags := {uid: api_tools.api[uid] for uid in uids}:
 			body += "## %s ##\n" % cat
 			body += output_functions_documentation(uids_tags, link_formatter)
 			body += "\n"
@@ -572,11 +566,7 @@ def gen_enum_documentation(uid, link_formatter):
 
 	body = str()
 	for cat, uids in sorted(cat_uids.items()):
-		uids_tags = {}
-		for uid in uids:
-			uids_tags[uid] = api_tools.api[uid]
-
-		if len(uids_tags) > 0:
+		if uids_tags := {uid: api_tools.api[uid] for uid in uids}:
 			body += "## %s ##\n" % cat
 			for uid_ in uids_tags:
 				body += "<div id=%s markdown=1>\n" % uid_
@@ -591,11 +581,7 @@ def gen_constants_documentation(uid, link_formatter):
 
 	body = str()
 	for cat, uids in sorted(cat_uids.items()):
-		uids_tags = {}
-		for uid in uids:
-			uids_tags[uid] = api_tools.api[uid]
-
-		if len(uids_tags) > 0:
+		if uids_tags := {uid: api_tools.api[uid] for uid in uids}:
 			body += "## %s ##\n" % cat
 			for uid_ in uids_tags:
 				body += "<div id=%s markdown=1>\n" % uid_
@@ -626,7 +612,7 @@ generated_symbols = {
 def default_link_target_formatter(uid, is_img_link=False):
 	# link to a manual page
 	if uid in doc_tools.man:
-		return "[%s](%s)" % (doc_tools.get_element_title(uid), uid)
+		return f"[{doc_tools.get_element_title(uid)}]({uid})"
 
 	# link to an API symbol
 	if uid in api_tools.api:
@@ -635,10 +621,10 @@ def default_link_target_formatter(uid, is_img_link=False):
 
 		if parent.tag == "class":  # symbol is a class
 			parent_uid = parent.get("uid")
-			return "<a href='%s'>%s</a>" % ("%s.html#%s" % (parent_uid, uid), tag.get("name"))
+			return f"""<a href='{parent_uid}.html#{uid}'>{tag.get("name")}</a>"""
 
 	# generic link
-	return "<a href='%s'>%s</a>" % (uid, uid)
+	return f"<a href='{uid}'>{uid}</a>"
 
 
 def title_directive_to_text(o, link_formatter):
@@ -673,11 +659,11 @@ def section_directive_to_text(o, link_formatter):
 				in_tr = True
 
 			html += '<td width="33%">\n'
-			html += '<p><a href="%s.html">%s</a></p>' % (get_parm(b, 'link'), get_parm(b, 'name'))
+			html += f"""<p><a href="{get_parm(b, 'link')}.html">{get_parm(b, 'name')}</a></p>"""
 			if gen_online_doc:
-				html += '<p>%s</p>' % get_parm(b, 'desc')
+				html += f"<p>{get_parm(b, 'desc')}</p>"
 			else:
-				html += '<p><small>%s</small></p>' % get_parm(b, 'desc')
+				html += f"<p><small>{get_parm(b, 'desc')}</small></p>"
 			html += '</td>\n'
 
 			i += 1
@@ -694,24 +680,23 @@ def section_directive_to_text(o, link_formatter):
 
 
 def img_to_text(o, link_formatter):
-	html = '<img src="%s"><br>\n' % link_formatter(o.parm, True)
-	return html
+	return '<img src="%s"><br>\n' % link_formatter(o.parm, True)
 
 
 def parse_tutorial_directive(o):
 	try:
 		for key, value in o.parms.items():
-			if key == 'goal':
-				goal = value.value.strip('"')
-			if key == 'level':
-				level = value.value.strip('"')
 			if key == 'duration':
 				duration = value.value
-			if key == 'lang':
-				lang = str(value.value)
-			if key == 'group':
+			elif key == 'goal':
+				goal = value.value.strip('"')
+			elif key == 'group':
 				group = str(value.value).strip('"')
 
+			elif key == 'lang':
+				lang = str(value.value)
+			elif key == 'level':
+				level = value.value.strip('"')
 		return {'goal': goal, 'level': level, 'duration': duration, 'lang': lang, 'group': group}
 	except:
 		return None
@@ -723,10 +708,10 @@ def tutorial_to_text(o, link_formatter):
 		return "<corrupt .tutorial directive>"
 
 	html = '<table class="tutorial-header">'
-	html += '<tr><td>Goal:</td><td>%s</td></tr>' % parse_out['goal']
-	html += '<tr><td>Difficulty:</td><td>%s</td></tr>' % parse_out['level']
-	html += '<tr><td>Duration:</td><td>%s minutes</td></tr>' % parse_out['duration']
-	html += '<tr><td>Language:</td><td>%s</td></tr>' % parse_out['lang']
+	html += f"<tr><td>Goal:</td><td>{parse_out['goal']}</td></tr>"
+	html += f"<tr><td>Difficulty:</td><td>{parse_out['level']}</td></tr>"
+	html += f"<tr><td>Duration:</td><td>{parse_out['duration']} minutes</td></tr>"
+	html += f"<tr><td>Language:</td><td>{parse_out['lang']}</td></tr>"
 	html += '</table>\n'
 	return html
 
@@ -741,10 +726,7 @@ directive_to_text = {
 
 def metadata_object_to_text(o, link_formatter):
 	if isinstance(o, MetaData):
-		text = ""
-		for s in o:
-			text += metadata_object_to_text(s, link_formatter)
-		return text
+		return "".join(metadata_object_to_text(s, link_formatter) for s in o)
 	elif isinstance(o, Directive):
 		if o.name in directive_to_text:
 			return directive_to_text[o.name](o, link_formatter)
@@ -759,7 +741,7 @@ def resolve_internal_links(this_uid, text, link_formatter, explicit_link_only=Tr
 	# uid documentation aliasing (quote documentation from an uid)
 	if api_tools.api is not None:
 		for uid, value in api_tools.api.items():
-			link_decl = "[%s:doc]" % uid
+			link_decl = f"[{uid}:doc]"
 			if text.find(link_decl) == -1:
 				continue
 			data = doc_tools.get_content_always(uid)
@@ -771,7 +753,7 @@ def resolve_internal_links(this_uid, text, link_formatter, explicit_link_only=Tr
 
 	# ------------------------------------------------------------------------
 	def get_link_decl(uid):
-		return "[%s]" % uid if explicit_link_only else uid
+		return f"[{uid}]" if explicit_link_only else uid
 
 	# link to api pages
 	if api_tools.api is not None:
@@ -809,7 +791,7 @@ def resolve_imports(text):
 			with open(args[0], 'r') as file:
 				import_content = ''.join(file.readlines())
 		except:
-			import_content = "[Import directive failed to load file '%s' (cwd is %s)]" % (args[0], os.getcwd())
+			import_content = f"[Import directive failed to load file '{args[0]}' (cwd is {os.getcwd()})]"
 
 		text = text[:pos] + import_content + text[end + 1:]
 		pos = end + 1
@@ -875,7 +857,7 @@ def format_page_content(uid, data, link_formatter=default_link_target_formatter,
 
 def format_html_link(uid):
 	"""Format a link across the documentation from an element UID"""
-	return "%s.html" % uid
+	return f"{uid}.html"
 
 
 def get_language_switcher_js():
@@ -911,8 +893,7 @@ def get_language_switcher_div():
 
 
 def get_html_header():
-	html = '<head>\n'
-	html += '<meta charset="utf-8">\n'
+	html = '<head>\n' + '<meta charset="utf-8">\n'
 	html += '<link rel="stylesheet" href="doc.css">\n'
 	html += get_language_switcher_js()
 	html += '</head>\n'

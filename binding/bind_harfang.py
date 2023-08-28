@@ -13,30 +13,34 @@ def check_bool_rval_lambda(gen, msg):
 
 
 def route_lambda(name):
-	return lambda args: '%s(%s);' % (name, ', '.join(args))
+	return lambda args: f"{name}({', '.join(args)});"
 
 
 def bind_std_vector(gen, T_conv, bound_name=None):
 	if gen.get_language() == 'CPython':
-		PySequence_T_type = 'PySequenceOf%s' % T_conv.bound_name
+		PySequence_T_type = f'PySequenceOf{T_conv.bound_name}'
 		gen.bind_type(lib.cpython.stl.PySequenceToStdVectorConverter(PySequence_T_type, T_conv))
 	elif gen.get_language() == 'Lua':
-		LuaTable_T_type = 'LuaTableOf%s' % T_conv.bound_name
+		LuaTable_T_type = f'LuaTableOf{T_conv.bound_name}'
 		gen.bind_type(lib.lua.stl.LuaTableToStdVectorConverter(LuaTable_T_type, T_conv))
 	elif gen.get_language() == 'Go':
-		GoTable_T_type = 'GoSliceOf%s' % T_conv.bound_name
+		GoTable_T_type = f'GoSliceOf{T_conv.bound_name}'
 		gen.bind_type(lib.go.stl.GoSliceToStdVectorConverter(GoTable_T_type, T_conv))
 
 	if bound_name is None:
-		bound_name = '%sList' % T_conv.bound_name
+		bound_name = f'{T_conv.bound_name}List'
 
-	conv = gen.begin_class('std::vector<%s>' % T_conv.ctype, bound_name=bound_name, features={'sequence': lib.std.VectorSequenceFeature(T_conv)})
+	conv = gen.begin_class(
+		f'std::vector<{T_conv.ctype}>',
+		bound_name=bound_name,
+		features={'sequence': lib.std.VectorSequenceFeature(T_conv)},
+	)
 	if gen.get_language() == 'CPython':
-		gen.bind_constructor(conv, ['?%s sequence' % PySequence_T_type])
+		gen.bind_constructor(conv, [f'?{PySequence_T_type} sequence'])
 	elif gen.get_language() == 'Lua':
-		gen.bind_constructor(conv, ['?%s sequence' % LuaTable_T_type])
+		gen.bind_constructor(conv, [f'?{LuaTable_T_type} sequence'])
 	elif gen.get_language() == 'Go':
-		gen.bind_constructor(conv, ['?%s sequence' % GoTable_T_type])
+		gen.bind_constructor(conv, [f'?{GoTable_T_type} sequence'])
 
 	def validate_std_vector_at_idx(gen, var, ctx):
 		out = 'if ((_self->size() == 0) || (%s >= _self->size())) {\n' % var
@@ -46,7 +50,7 @@ def bind_std_vector(gen, T_conv, bound_name=None):
 
 	gen.bind_method(conv, 'clear', 'void', [])
 	gen.bind_method(conv, 'reserve', 'void', ['size_t size'])
-	gen.bind_method(conv, 'push_back', 'void', ['%s v' % T_conv.ctype])
+	gen.bind_method(conv, 'push_back', 'void', [f'{T_conv.ctype} v'])
 	gen.bind_method(conv, 'size', 'size_t', [])
 	gen.bind_method(conv, 'at', repr(T_conv.ctype), ['size_t idx'], features={'validate_arg_in': [validate_std_vector_at_idx]})
 
@@ -80,10 +84,10 @@ def expand_std_vector_proto(gen, protos, is_constructor_proto=False):
 
 		feats = proto[start+1]
 		if 'arg_out' in feats:
-			blacklist = blacklist + feats['arg_out']
+			blacklist += feats['arg_out']
 
 		for arg in args:
-			is_optional = arg[0:1] == '?'
+			is_optional = arg[:1] == '?'
 			if is_optional:
 				arg = arg[1:]
 
@@ -96,10 +100,10 @@ def expand_std_vector_proto(gen, protos, is_constructor_proto=False):
 			if has_sequence and not is_blacklisted:
 				add_expanded = True
 				seq = conv._features['sequence']
-				arg = '%s%s %s_%s' % (prefix[gen.get_language()], seq.wrapped_conv.bound_name, name_prefix[gen.get_language()], carg.name)
+				arg = f'{prefix[gen.get_language()]}{seq.wrapped_conv.bound_name} {name_prefix[gen.get_language()]}_{carg.name}'
 
 			if is_optional:
-				arg = '?' + arg
+				arg = f'?{arg}'
 
 			expanded.append(arg)
 
@@ -816,13 +820,31 @@ def bind_window_system(gen):
 
 #
 def decl_get_set_method(gen, conv, type, method_suffix, var_name, features=[]):
-	gen.bind_method(conv, 'Get' + method_suffix, 'const %s' % type, [], features)
-	gen.bind_method(conv, 'Set' + method_suffix, 'void', ['const %s &%s' % (type, var_name)], features)
+	gen.bind_method(conv, f'Get{method_suffix}', f'const {type}', [], features)
+	gen.bind_method(
+		conv,
+		f'Set{method_suffix}',
+		'void',
+		[f'const {type} &{var_name}'],
+		features,
+	)
 
 
 def decl_comp_get_set_method(gen, conv, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):
-	gen.bind_method(conv, 'Get' + method_suffix, 'const %s &' % type, ['const %s *%s' % (comp_type, comp_var_name)], features)
-	gen.bind_method(conv, 'Set' + method_suffix, 'void', ['%s *%s' % (comp_type, comp_var_name), 'const %s &%s' % (type, var_name)], features)
+	gen.bind_method(
+		conv,
+		f'Get{method_suffix}',
+		f'const {type} &',
+		[f'const {comp_type} *{comp_var_name}'],
+		features,
+	)
+	gen.bind_method(
+		conv,
+		f'Set{method_suffix}',
+		'void',
+		[f'{comp_type} *{comp_var_name}', f'const {type} &{var_name}'],
+		features,
+	)
 
 
 def bind_LuaObject(gen):
@@ -830,6 +852,7 @@ def bind_LuaObject(gen):
 	gen.add_include('engine/lua_object.h')
 
 	if gen.get_language() == 'Lua':
+
 		class LuaObjectConverter(lang.lua.LuaTypeConverterCommon):
 			def get_type_glue(self, gen, module_name):
 				check = '''\
@@ -853,31 +876,40 @@ inline int %s(lua_State *L, void *obj, OwnershipPolicy) {
 		lua_object = gen.bind_type(LuaObjectConverter('hg::LuaObject'))
 		lua_object._inline = True
 
-		bind_std_vector(gen, lua_object)
 	else:
 		lua_object = gen.begin_class('hg::LuaObject')
 		gen.end_class(lua_object)
 
-		bind_std_vector(gen, lua_object)
+
+	bind_std_vector(gen, lua_object)
 
 
 def bind_signal_T(gen, name, rtype, args, cb_name):
-	sig = '%s(%s)' % (rtype, ','.join(args))
+	sig = f"{rtype}({','.join(args)})"
 
-	lib.stl.bind_function_T(gen, 'std::function<%s>' % sig, cb_name)
+	lib.stl.bind_function_T(gen, f'std::function<{sig}>', cb_name)
 
-	cnx = gen.begin_class('hg::Signal<%s>::Connection' % sig, bound_name='%sConnection' % cb_name)
+	cnx = gen.begin_class(
+		f'hg::Signal<{sig}>::Connection', bound_name=f'{cb_name}Connection'
+	)
 	gen.end_class(cnx)
 
-	signal_T = gen.begin_class('hg::Signal<%s>' % sig, noncopyable=True)
-	gen.bind_method(signal_T, 'Connect', 'hg::Signal<%s>::Connection' % sig, ['std::function<%s> listener' % sig])
-	gen.bind_method(signal_T, 'Disconnect', 'void', ['hg::Signal<%s>::Connection connection' % sig])
+	signal_T = gen.begin_class(f'hg::Signal<{sig}>', noncopyable=True)
+	gen.bind_method(
+		signal_T,
+		'Connect',
+		f'hg::Signal<{sig}>::Connection',
+		[f'std::function<{sig}> listener'],
+	)
+	gen.bind_method(
+		signal_T,
+		'Disconnect',
+		'void',
+		[f'hg::Signal<{sig}>::Connection connection'],
+	)
 	gen.bind_method(signal_T, 'DisconnectAll', 'void', [])
 
-	named_args = []
-	for i in range(len(args)):
-		named_args.append(args[i] + ' arg%d' % i)
-
+	named_args = [args[i] + ' arg%d' % i for i in range(len(args))]
 	gen.bind_method(signal_T, 'Emit', 'void', named_args)
 	gen.bind_method(signal_T, 'GetListenerCount', 'size_t', [])
 	gen.end_class(signal_T)

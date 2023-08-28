@@ -4,7 +4,7 @@ import subprocess
 def run(name:str):
     if name != "assetc":
         raise RuntimeError(f"Unknown tool {name}")
-    
+
     def method(*args):
         _binary_name = Path(name).name
         _prefix = Path(__file__).parent
@@ -12,7 +12,7 @@ def run(name:str):
 
         _binary_path = _prefix / Path("assetc") / _binary_name
         if not _binary_path.is_file():
-            _binary_path = Path(str(_binary_path) + ".exe")
+            _binary_path = Path(f"{_binary_path}.exe")
             if not _binary_path.is_file():
                 raise RuntimeError(f"Failed to find binary: {_binary_name}")
 
