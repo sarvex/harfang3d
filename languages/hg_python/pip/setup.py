@@ -85,7 +85,7 @@ class BuildExtension(cmake_build_extension.BuildExtension):
 					import subprocess
 
 					def run(name:str):
-						_bin_dirs = {str(bin_dirs)}
+						_bin_dirs = {bin_dirs}
 						if not name in _bin_dirs:
 							raise RuntimeError(f"Unknown tools {{name}}")
 						
@@ -113,7 +113,7 @@ class BuildExtension(cmake_build_extension.BuildExtension):
 
 						return method
 				"""
-			)
+			),
 		}
 
 		bin_folder = cmake_install_prefix / "bin"
@@ -182,51 +182,35 @@ with open(path.join(source_dir, 'languages', 'hg_python', 'DESCRIPTION.rst'), en
 
 setup(
 	name='harfang',
-
 	version=version_string,
-
 	description='HARFANG 3D is a game/visualization library for Python. It includes a comprehensive set of Scene, Physics, Rendering pipeline, Audio and Virtual Reality APIs. It is written in C++ and supports DirectX 11, OpenGL and OpenGL ES.',
 	long_description=long_description,
-
 	url='https://www.harfang3d.com',
-
 	project_urls={
 		'Changelog': f"https://github.com/harfang3d/harfang3d/releases/tag/v{version_string}",
 		'Documentation': f"https://www.harfang3d.com/api/{version_string}/cpython/classes/",
 		'Source': 'https://github.com/harfang3d/harfang3d',
-		'Tracker': 'https://github.com/harfang3d/harfang3d/issues'
+		'Tracker': 'https://github.com/harfang3d/harfang3d/issues',
 	},
-
 	author='NWNC HARFANG',
 	author_email='contact@harfang3d.com',
-
 	license='Other/Proprietary License',
-
-	# See https://pypi.python.org/pypi?%3Aaction=list_classifiers
 	classifiers=[
 		'Intended Audience :: Developers',
 		'Intended Audience :: Science/Research',
-
 		'Topic :: Software Development',
 		'Topic :: Software Development :: Libraries :: Application Frameworks',
 		'Topic :: Multimedia :: Sound/Audio',
 		'Topic :: Multimedia :: Graphics :: 3D Rendering',
 		'Topic :: Scientific/Engineering :: Visualization',
-
 		'Operating System :: POSIX',
 		'Operating System :: POSIX :: Linux',
 		'Operating System :: Microsoft',
 		'Operating System :: Microsoft :: Windows',
-
 		'Programming Language :: Python :: 3',
 	],
-
 	keywords='2d 3d multimedia development engine realtime rendering design visualization simulation physics vr virtual reality python lua opengl opengles directx',
-
-	cmdclass=dict(
-		build_ext=BuildExtension,
-		sdist=GitSdistFolder
-	),
+	cmdclass=dict(build_ext=BuildExtension, sdist=GitSdistFolder),
 	ext_modules=[
 		cmake_build_extension.CMakeExtension(
 			name="CMakeProject",
@@ -243,8 +227,9 @@ setup(
 			cmake_configure_options=[
 				f"-DPython3_EXECUTABLE:FILEPATH={sys.executable}",
 				'-DCMAKE_BUILD_TYPE=Release',
-				'-DCMAKE_MODULE_PATH:PATH=' + path.join(source_dir, 'harfang', 'cmake'),
-				'-DHG_FABGEN_PATH:PATH=' + fabgen_path,
+				'-DCMAKE_MODULE_PATH:PATH='
+				+ path.join(source_dir, 'harfang', 'cmake'),
+				f'-DHG_FABGEN_PATH:PATH={fabgen_path}',
 				'-DHG_BUILD_ASSETC:BOOL=ON',
 				'-DHG_BUILD_CPP_SDK:BOOL=OFF',
 				'-DHG_REBUILD_GLFW:BOOL=ON',
@@ -260,8 +245,8 @@ setup(
 				'-DHG_ENABLE_OPENVR_API:BOOL=ON',
 				'-DHG_ENABLE_RECAST_DETOUR_API:BOOL=OFF',
 				'-DHG_BUILD_DOCS:BOOL=OFF',
-				'-DHG_COMMIT_ID:STRING=' + commit_id
-			]
+				f'-DHG_COMMIT_ID:STRING={commit_id}',
+			],
 		)
-	]
+	],
 )

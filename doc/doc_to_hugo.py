@@ -29,7 +29,7 @@ man_pages_cache = {}
 man_pages_spacing = []
 
 def parse_man_page(path):
-	with open(os.path.join(args.doc, path + '.md')) as md:
+	with open(os.path.join(args.doc, f'{path}.md')) as md:
 		md_lines = md.readlines()
 
 	man_page = {'lines': []}
@@ -37,9 +37,7 @@ def parse_man_page(path):
 	for line in md_lines:
 		if line.startswith('.title '):
 			man_page['title'] = line[7:].strip()
-		elif line.strip() == '[TOC]':
-			pass  # ignore TOC
-		else:
+		elif line.strip() != '[TOC]':
 			man_page['lines'].append(line)
 
 	while (len(man_page['lines']) > 0) and (man_page['lines'][0] == '\n'):
@@ -50,9 +48,7 @@ def parse_man_page(path):
 
 #
 def format_natural_list(vals):
-	if len(vals) == 1:
-		return vals[0]
-	return '%s and %s' % (', '.join(vals[:-1]), vals[-1])
+	return vals[0] if len(vals) == 1 else f"{', '.join(vals[:-1])} and {vals[-1]}"
 
 
 #
@@ -62,7 +58,7 @@ def report_unresolved_links():
 	if len(unresolved_links) > 0:
 		print('Unresolved links (%d):' % len(unresolved_links))
 		for link in unresolved_links:
-			print('  - %s' % link)
+			print(f'  - {link}')
 
 
 link_re = re.compile('\[[^\[\]]+\]')
@@ -170,13 +166,13 @@ def gather_uid_function_links(uid):
 	for fn in functions:
 		if fn.attrib['uid'] != uid:
 			if fn.attrib['returns'] == uid:
-				links.append('[%s]' % fn.attrib['uid'])
+				links.append(f"[{fn.attrib['uid']}]")
 			elif 'returns_constants_group' in fn.attrib and fn.attrib['returns_constants_group'] == uid:
-				links.append('[%s]' % fn.attrib['uid'])
+				links.append(f"[{fn.attrib['uid']}]")
 			else:
 				for parm in fn:
 					if (parm.attrib['type'] == uid) or ('constants_group' in parm.attrib and parm.attrib['constants_group'] == uid):
-						links.append('[%s]' % fn.attrib['uid'])
+						links.append(f"[{fn.attrib['uid']}]")
 						break
 
 	return sorted(list(set(links)))
@@ -184,9 +180,7 @@ def gather_uid_function_links(uid):
 def get_uid_doc(uid):
 	if uid in doc_tools.man:
 		return doc_tools.man[uid]
-	if uid in doc_tools.doc:
-		return doc_tools.doc[uid]
-	return ''
+	return doc_tools.doc[uid] if uid in doc_tools.doc else ''
 
 def gather_uid_class_links(uid):
 	links = []
@@ -194,17 +188,19 @@ def gather_uid_class_links(uid):
 	for cl in classes:
 		if cl.attrib['uid'] != uid:
 			for c in cl:
-				if c.tag == 'variable':
-					if c.attrib['type'] == uid:
-						links.append('[%s]' % cl.attrib['uid'])
+				if (
+					c.tag == 'function'
+					and c.attrib['returns'] == uid
+					or c.tag != 'function'
+					and c.tag == 'variable'
+					and c.attrib['type'] == uid
+				):
+					links.append(f"[{cl.attrib['uid']}]")
 				elif c.tag == 'function':
-					if c.attrib['returns'] == uid:
-						links.append('[%s]' % cl.attrib['uid'])
-					else:
-						for parm in c:
-							if (parm.attrib['type'] == uid) or ('constants_group' in parm.attrib and parm.attrib['constants_group'] == uid):
-								links.append('[%s]' % cl.attrib['uid'])
-								break
+					for parm in c:
+						if (parm.attrib['type'] == uid) or ('constants_group' in parm.attrib and parm.attrib['constants_group'] == uid):
+							links.append(f"[{cl.attrib['uid']}]")
+							break
 
 	return sorted(list(set(links)))
 
@@ -215,30 +211,30 @@ def format_related_links(uid):
 	out = ''
 
 	if len(cl_links) > 0:
-		out = out +	'\n<small>Related classes: %s.</small>\n' % format_natural_list(cl_links)
+		out += '\n<small>Related classes: %s.</small>\n' % format_natural_list(
+			cl_links
+		)
 
 	if len(fn_links) > 0:
-		out = out +	'\n<small>Related functions: %s.</small>\n' % format_natural_list(fn_links)
+		out += '\n<small>Related functions: %s.</small>\n' % format_natural_list(
+			fn_links
+		)
 
 	if len(cl_links) > 0 or len(fn_links) > 0:
-		out = out + '\n'
+		out += '\n'
 
 	return out
 
 
 #
 def get_api_tags(type):
-	out = []
-	for e in api:
-		if e.tag in type:
-			out.append(e)
-	return out
+	return [e for e in api if e.tag in type]
 
 def make_api_glossary(tags):
 	glossary = {}
 
 	for tag in tags:
-		letter = tag.attrib['uid'][0:1].lower()
+		letter = tag.attrib['uid'][:1].lower()
 		if letter not in glossary:
 			glossary[letter] = []
 		glossary[letter].append(tag)
@@ -259,7 +255,7 @@ def prepare_proto(proto, lang):
 	#
 	rvals = []
 	if proto.attrib['returns'] == 'void':
-		if len(out_parms) == 0:
+		if not out_parms:
 			rvals.append('[void]')
 	else:
 		def get_parm_link(parm):
@@ -268,9 +264,9 @@ def prepare_proto(proto, lang):
 
 				for e in constants:
 					if e.attrib['name'] == cg:
-						return '[%s]' % cg
+						return f'[{cg}]'
 
-			return '[%s]' % parm.attrib['returns']
+			return f"[{parm.attrib['returns']}]"
 
 		rvals.append(get_parm_link(proto))
 
@@ -281,9 +277,9 @@ def prepare_proto(proto, lang):
 
 			for e in constants:
 				if e.attrib['name'] == cg:
-					return '[%s]' % cg
+					return f'[{cg}]'
 
-		return '[%s]' % parm.attrib['type']
+		return f"[{parm.attrib['type']}]"
 
 	for out_parm in out_parms:
 		rvals.append(get_parm_link(out_parm))
@@ -291,11 +287,19 @@ def prepare_proto(proto, lang):
 	rval = ', '.join(rvals)
 
 	if lang == 'cpython':
-		_args = ['_%s:_ %s' % (parm.attrib['name'], get_parm_link(parm)) for parm in proto if not parm.attrib['name'].startswith('OUTPUT')]
+		_args = [
+			f"_{parm.attrib['name']}:_ {get_parm_link(parm)}"
+			for parm in proto
+			if not parm.attrib['name'].startswith('OUTPUT')
+		]
 	else:
-		_args = ['%s _%s_' % (get_parm_link(parm), parm.attrib['name']) for parm in proto if not parm.attrib['name'].startswith('OUTPUT')]
+		_args = [
+			f"{get_parm_link(parm)} _{parm.attrib['name']}_"
+			for parm in proto
+			if not parm.attrib['name'].startswith('OUTPUT')
+		]
 
-	_args = ', '.join(_args) if len(_args) >  0 else ''
+	_args = ', '.join(_args) if _args else ''
 
 	return rval, _args
 
@@ -448,7 +452,7 @@ def convert(api, doc, out):
 	man_pages = []
 
 	with open(os.path.join(doc, 'tree_desc.txt')) as tree_desc:
-		for page in tree_desc.readlines():
+		for page in tree_desc:
 			page = page.strip()
 			if page == '':
 				man_pages_spacing.append(man_pages[-1])
@@ -477,7 +481,7 @@ draft: false
 	for page in man_pages:
 		man_page = man_pages_cache[page]
 
-		out_md_path = os.path.join(docs_out_path, page + '.md')
+		out_md_path = os.path.join(docs_out_path, f'{page}.md')
 		with open(out_md_path, 'w', encoding='utf-8') as md:
 			# output front matter
 			md.write('''\
@@ -533,9 +537,7 @@ toc: true
 
 		def get_desc(uid: str) -> str:
 			doc = get_doc(uid)
-			if len(doc) == 0:
-				return '-'
-			return sanitize(first_statement(doc[0])).strip()
+			return '-' if len(doc) == 0 else sanitize(first_statement(doc[0])).strip()
 
 		id = 0
 
@@ -546,13 +548,18 @@ toc: true
 		json_content = []
 
 		for name, uid in cls.items():
-			json_content.append('''\
+			json_content.append(
+				(
+					'''\
 {
 	"id": %d,
 	"href": "../classes/#%s",
 	"title": "%s",
 	"description": %s
-}''' % (id, name.lower(), name, '"%s"' % get_desc(uid)))
+}'''
+					% (id, name.lower(), name, f'"{get_desc(uid)}"')
+				)
+			)
 			id = id + 1
 
 		fns = {}
@@ -560,13 +567,18 @@ toc: true
 			fns[fn.attrib['name']] = fn.attrib['uid']
 
 		for name, uid in fns.items():
-			json_content.append('''\
+			json_content.append(
+				(
+					'''\
 {
 	"id": %d,
 	"href": "../functions/#%s",
 	"title": "%s",
 	"description": %s
-}''' % (id, name.lower(), name, '"%s"' % get_desc(uid)))
+}'''
+					% (id, name.lower(), name, f'"{get_desc(uid)}"')
+				)
+			)
 			id = id + 1
 
 		csts = {}
@@ -576,13 +588,18 @@ toc: true
 			csts[cst.attrib['name']] = cst.attrib['uid']
 
 		for name, uid in csts.items():
-			json_content.append('''\
+			json_content.append(
+				(
+					'''\
 {
 	"id": %d,
 	"href": "../constants/#%s",
 	"title": "%s",
 	"description": %s
-}''' % (id, name.lower(), name, '"%s"' % get_desc(uid)))
+}'''
+					% (id, name.lower(), name, f'"{get_desc(uid)}"')
+				)
+			)
 			id = id + 1
 
 		for cl in classes:
@@ -590,13 +607,18 @@ toc: true
 			for cc in cl:
 				if cc.tag == 'function':
 					name, uid = cc.attrib['name'], cc.attrib['uid']
-					json_content.append('''\
+					json_content.append(
+						(
+							'''\
 {
 	"id": %d,
 	"href": "../classes/#%s",
 	"title": "%s",
 	"description": %s
-}''' % (id, class_name.lower(), name, '"%s"' % get_desc(uid)))
+}'''
+							% (id, class_name.lower(), name, f'"{get_desc(uid)}"')
+						)
+					)
 					id = id + 1
 
 		file.write('[\n')

@@ -35,12 +35,12 @@ def compare_attributes(parent, uid, e0, e1, attributes):
 def compare_element(status, source, target, tag, callback=None):
     for it in target.findall(tag):
         uid = it.get('uid')
-        if source.find(".//%s[@uid='%s']" % (tag, uid)) is None:
+        if source.find(f".//{tag}[@uid='{uid}']") is None:
             status['added'].append(uid)
 
     for it in source.findall(tag):
         uid = it.get('uid')
-        other = target.find(".//%s[@uid='%s']" % (tag, uid))
+        other = target.find(f".//{tag}[@uid='{uid}']")
         if other is None:
             status['removed'].append(uid)
         elif callback is not None:
@@ -49,13 +49,13 @@ def compare_element(status, source, target, tag, callback=None):
 def compare_enum(status, e0, e1):
     for it in e0.findall('entry'):
         name = it.get('name')
-        other = e1.find(".//entry[@name='%s']" % name)
+        other = e1.find(f".//entry[@name='{name}']")
         if other is None:
             status['removed'].append(name)
 
     for it in e1.findall('entry'):
         name = it.get('name')
-        other = e0.find(".//entry[@name='%s']" % name)
+        other = e0.find(f".//entry[@name='{name}']")
         if other is None:
             status['added'].append(name)
 
@@ -68,7 +68,7 @@ def compare_children(parent, uid, e0, e1, child, tag, attributes=None):
 
     for it in e0.findall(child):
         name = it.get(tag)
-        other = e1.find(".//%s[@%s='%s']" % (child, tag, name))
+        other = e1.find(f".//{child}[@{tag}='{name}']")
         if other is None:
             status['removed'].append(name)
         elif attributes is not None:
@@ -76,7 +76,7 @@ def compare_children(parent, uid, e0, e1, child, tag, attributes=None):
 
     for it in e1.findall(child):
         name = it.get(tag)
-        other = e0.find(".//%s[@%s='%s']" % (child, tag, name))
+        other = e0.find(f".//{child}[@{tag}='{name}']")
         if other is None:
             status['added'].append(name)
 

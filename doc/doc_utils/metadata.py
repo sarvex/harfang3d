@@ -56,7 +56,7 @@ class Directive(Plain):
 
 		if not is_short_form:
 			# test for multi line directive
-			endmarker = ".end%s" % name.name
+			endmarker = f".end{name.name}"
 
 			end = text.find(endmarker)
 			if end == -1:
@@ -106,7 +106,7 @@ class TextBlock(Plain):
 			else:
 				pos = end
 
-		setattr(o, 'content', text[0:pos])
+		setattr(o, 'content', text[:pos])
 		return text[pos:], o
 
 	def __str__(self):

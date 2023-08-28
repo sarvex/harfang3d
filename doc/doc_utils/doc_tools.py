@@ -42,11 +42,11 @@ builtin_types = {
 
 
 def format_array_type(uid):
-	return "[%s]" % format_uid_link(uid[7:-1])
+	return f"[{format_uid_link(uid[7:-1])}]"
 
 
 def format_list_type(uid):
-	return "[%s]" % format_uid_link(uid[6:-1])
+	return f"[{format_uid_link(uid[6:-1])}]"
 
 
 dynamic_types = {
@@ -66,10 +66,7 @@ def format_uid_link(uid):
 		uid = builtin_types[uid]
 
 	# manual page
-	if uid in man or uid in api_tools.api:
-		return '[%s]' % uid
-
-	return uid  # nothing special
+	return f'[{uid}]' if uid in man or uid in api_tools.api else uid
 
 
 # ------------------------------------------------------------------------------
@@ -79,7 +76,9 @@ def get_all_classes():
 
 # ------------------------------------------------------------------------------
 def list_to_natural_string(l, separator):
-	return (' %s ' % separator).join([', '.join(l[:-1]), l[-1]]) if len(l) > 1 else l[0]
+	return (
+		f' {separator} '.join([', '.join(l[:-1]), l[-1]]) if len(l) > 1 else l[0]
+	)
 
 
 inheritance = None
@@ -105,9 +104,7 @@ default_value_reformat = {
 def format_function_proto_rvalue(tag):
 	parms = []
 
-	returns_constants_group = tag.get('returns_constants_group')
-
-	if returns_constants_group:
+	if returns_constants_group := tag.get('returns_constants_group'):
 		parms.append(format_uid_link(returns_constants_group))
 	else:
 		parms.append(format_uid_link(tag.get('returns', 'void')))
@@ -129,38 +126,28 @@ def format_function_proto_rvalue(tag):
 def format_function_proto_parms(tag):
 	parms = []
 	for parm_tag in tag.iter('parm'):
-		constants_group = parm_tag.get('constants_group')
-
-		if constants_group:
+		if constants_group := parm_tag.get('constants_group'):
 			parm = format_uid_link(constants_group)
 		else:
 			parm = format_uid_link(parm_tag.get('type'))
 
-		# optional variable name
-		display_name = parm_tag.get('name')
-		if display_name:
+		if display_name := parm_tag.get('name'):
 			if display_name.startswith("OUTPUT"):  # skip OUTPUT parameters
 				continue
 
-			if display_name.startswith("INOUT"):
-				parm += " _%s_" % "v"
-			else:
-				parm += " _%s_" % display_name
-
-		# optional default value
-		value = parm_tag.get('default_value')
-		if value:
+			parm += ' _v_' if display_name.startswith("INOUT") else f" _{display_name}_"
+		if value := parm_tag.get('default_value'):
 			if value in default_value_reformat:
 				value = default_value_reformat[value]
 
 			# catch c++ floating point values
 			if value[-2:] == ".f":
-				value = value[:-2] + ".0"
+				value = f"{value[:-2]}.0"
 
 			# replace c++ namespace delimiter
 			value = value.replace("::", ".")
 
-			parm += "` = %s`" % value
+			parm += f"` = {value}`"
 
 		parms.append(parm)
 
@@ -183,7 +170,7 @@ def generate_api_class_autodoc(tag):
 
 
 def generate_api_function_autodoc(tag):
-	autodoc = '.proto %s %s' % (format_uid_link(tag.get('returns')), tag.get('name'))
+	autodoc = f".proto {format_uid_link(tag.get('returns'))} {tag.get('name')}"
 	autodoc += format_function_proto_parms(tag)
 	return autodoc
 
@@ -196,11 +183,11 @@ def generate_api_tag_autodoc(uid):
 		'function': generate_api_function_autodoc,
 	}
 
-	autodoc = ""
-	for tag in api_tools.api[uid]:
-		if tag.tag in generators:
-			autodoc += generators[tag.tag](tag)
-	return autodoc
+	return "".join(
+		generators[tag.tag](tag)
+		for tag in api_tools.api[uid]
+		if tag.tag in generators
+	)
 
 
 # ------------------------------------------------------------------------------
@@ -208,11 +195,7 @@ def gather_manual_links(man_uid):
 	"""Retrieve all links to a manual page in a page body"""
 	text = man[man_uid]
 
-	uid_links = []
-	for uid, value in man.items():
-		if text.find("[%s]" % uid) != -1:
-			uid_links.append(uid)
-	return uid_links
+	return [uid for uid, value in man.items() if text.find(f"[{uid}]") != -1]
 
 
 def generate_manual_tree(blacklist=[]):
@@ -264,17 +247,13 @@ def get_content_always(uid):
 		return man[uid]
 	if uid in doc:
 		return doc[uid]
-	if uid in api_tools.api:
-		return generate_api_tag_autodoc(uid)
-	return None
+	return generate_api_tag_autodoc(uid) if uid in api_tools.api else None
 
 
 # ------------------------------------------------------------------------------
 def parse_element_metadata(uid):
 	"""Parse the metadata for a given element from its UID"""
-	data = None
-	if uid in man:
-		data = man[uid]
+	data = man[uid] if uid in man else None
 	if data is None and uid in doc:
 		data = doc[uid]
 
@@ -302,9 +281,7 @@ def get_element_directives(uid, directive_name):
 def get_element_title(uid):
 	"""Return the title of an element from its UID"""
 	directives = get_element_directives(uid, 'title')
-	if len(directives) == 0:
-		return uid
-	return str(directives[0].content[0])
+	return uid if len(directives) == 0 else str(directives[0].content[0])
 
 
 # ------------------------------------------------------------------------------
@@ -338,7 +315,7 @@ def load_doc_folder(path):
 	doc, man = OrderedDict(), OrderedDict()
 
 	for uid in mds:
-		md_path = os.path.join(path, uid + ".md")
+		md_path = os.path.join(path, f"{uid}.md")
 		with open(md_path, "r", encoding="utf-8") as file:
 			data = file.read()
 
